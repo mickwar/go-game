@@ -29,9 +29,9 @@ go.plot.init = function(x){
     axis(3, at = seq(1+x$hoff, x$m+x$hoff, by=1), labels = 1:x$m, line = -3)
 
     # Other Markers (for identify())
-    points(-0.75, -0.75, cex = 5, lwd = 5, pch = 4, col='red')
-    points(x$p+0.75, -0.75, cex = 5, lwd = 5, pch = 1, col='darkgreen')
-    text(-0.25, x$p+0.75, "Pass", cex = 3)
+#   points(-0.75, -0.75, cex = 5, lwd = 5, pch = 4, col='red')
+#   points(x$p+0.75, -0.75, cex = 5, lwd = 5, pch = 1, col='darkgreen')
+#   text(-0.25, x$p+0.75, "Pass", cex = 3)
     }
 
 go.plot.add = function(where, x){
@@ -77,11 +77,10 @@ go.play = function(n, m = n, old_game){
             go.plot.add(b, xglobal)
     }
 
-
     error.check = function(where){
         # No points clicked
         if (length(where) == 0){
-            cat("    Click where to place piece, then click green circle, then right clight.\n")
+            cat("    Click where to place piece then right clight to confirm.\n")
             return (TRUE)
             }
 
@@ -91,23 +90,6 @@ go.play = function(n, m = n, old_game){
             return (TRUE)
             }
 
-        # Only one location clicked that was not a pass
-        if ((length(where) == 1) && (where[1] != xglobal$n*xglobal$m + 3)){
-            cat("    Click the green circle to confirm a move. Starting over.\n")
-            return (TRUE)
-            }
-
-        # Red X was clicked
-        if (any(where == xglobal$n*xglobal$m + 1)){
-            cat("    Redoing turn.\n")
-            return (TRUE)
-            }
-
-        # Green O not clicked
-        if (!any(where == xglobal$n*xglobal$m + 2)){
-            cat("    Green circle must be clicked to confirm a move. Starting over.\n")
-            return (TRUE)
-            }
 
         # Cannot place in existing location
         if (xglobal$board[min(where)] != 0){
@@ -115,12 +97,54 @@ go.play = function(n, m = n, old_game){
             return (TRUE)
             }
 
-        # Need to add an option that calls capture() to make sure that the proposed
-        # move doesn't result in an immediate capture by the opponent
-
         # All good, no errors
         return (FALSE)
         }
+
+#   Old
+#   error.check = function(where){
+#       # No points clicked
+#       if (length(where) == 0){
+#           cat("    Click where to place piece, then click green circle, then right clight.\n")
+#           return (TRUE)
+#           }
+
+#       # Too many points clicked
+#       if (length(where) > 2){
+#           cat("    Too many points clicked. Starting turn over.\n")
+#           return (TRUE)
+#           }
+
+#       # Only one location clicked that was not a pass
+#       if ((length(where) == 1) && (where[1] != xglobal$n*xglobal$m + 3)){
+#           cat("    Click the green circle to confirm a move. Starting over.\n")
+#           return (TRUE)
+#           }
+
+#       # Red X was clicked
+#       if (any(where == xglobal$n*xglobal$m + 1)){
+#           cat("    Redoing turn.\n")
+#           return (TRUE)
+#           }
+
+#       # Green O not clicked
+#       if (!any(where == xglobal$n*xglobal$m + 2)){
+#           cat("    Green circle must be clicked to confirm a move. Starting over.\n")
+#           return (TRUE)
+#           }
+
+#       # Cannot place in existing location
+#       if (xglobal$board[min(where)] != 0){
+#           cat("    Invalid move: piece already there\n")
+#           return (TRUE)
+#           }
+
+#       # Need to add an option that calls capture() to make sure that the proposed
+#       # move doesn't result in an immediate capture by the opponent
+
+#       # All good, no errors
+#       return (FALSE)
+#       }
 
     capture.recurse = function(where){
         if (abort)
@@ -146,12 +170,13 @@ go.play = function(n, m = n, old_game){
             return (0)
             }
 
-        for (i in h){
+        for (i in h[!is.na(h)]){
             # capture.recurse() hasn't already been run, and
             # the neighbor is friendly
             if ((checked[i] == 0) && (xglobal$board[i] == -xglobal$turn))
                 capture.recurse(i)
             }
+
 
         }
 
@@ -181,6 +206,7 @@ go.play = function(n, m = n, old_game){
             if (!abort){
                 for (i in 1:(xglobal$n * xglobal$m)){
                     if (checked[i] == 1){
+                        capture.made <<- TRUE
                         xglobal$board[i] <<- 0
                         go.plot.remove(i, xglobal)
                         }
@@ -189,34 +215,63 @@ go.play = function(n, m = n, old_game){
             }
         }
 
+    cat("Starting the game.\n")
+    cat("Left-click on a position for a stone to be placed.\n")
+    cat("Right-click to confirm selection.\n")
+
     while (TRUE){
         g = expand.grid(seq(1+xglobal$voff, xglobal$n+xglobal$voff, by = 1),
                         seq(1+xglobal$hoff, xglobal$m+xglobal$hoff, by = 1))
         g = g[,c(2, 1)]
-        g = rbind(g, c(-0.75, -0.75), c(xglobal$p + 0.75, -0.75))
 
-        cat(ifelse(xglobal$turn == 1, "Black", "White"), "'s turn: \n", sep="")
+#       red x and green circle
+#       g = rbind(g, c(-0.75, -0.75), c(xglobal$p + 0.75, -0.75))
+
+        cat(ifelse(xglobal$turn == 1, "Black", "White"), "'s turn\n", sep="")
         (where = identify(g, offset = 0, plot = FALSE))
 
         if (!error.check(where)){
             where = min(where)
             xglobal$board[where] <<- xglobal$turn
 
-            go.plot.add(where, xglobal)
+            capture.made <<- FALSE
             capture(where, xglobal)
 
+
+            # Check to make sure a move won't result in immediate capture by enemy
+            # This needs to be run after checking if the move results in a capture
+            # of the enemy, so it's in the wrong place right now
+            checked <<- double(xglobal$n * xglobal$m)
+            abort <<- FALSE
+            possible.error <<- FALSE
+            xglobal$turn <<- -xglobal$turn # Temporarily change turns
+            capture.recurse(where)
             xglobal$turn <<- -xglobal$turn
+            if (!abort)
+                possible.error <<- TRUE
+
+
+            # A capture was made, proceed as normal
+            if (capture.made){
+                go.plot.add(where, xglobal)
+                xglobal$turn <<- -xglobal$turn
+            } else { # No capture
+                if (!possible.error){ # Not being captured
+                    go.plot.add(where, xglobal)
+                    xglobal$turn <<- -xglobal$turn
+                } else { # No capture AND the piece would have captured by an enemy
+                    cat("    Invalid move: piece would be immediately captured\n")
+                    xglobal$board[where] <<- 0
+                    }
+                }
             }
-        
         }
 
     }
 
-#go.play(13)
-new = xglobal
-# 
-# go.play(3, 5)
-# 
+go.play(13)
 
-go.play(old_game = new)
+# new = xglobal
+#
+# go.play(old_game = new)
 
