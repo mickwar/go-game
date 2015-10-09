@@ -35,8 +35,8 @@ go.plot.init = function(x){
     }
 
 go.plot.add = function(where, x){
-#   cex = 0.95*(100/(x$p-1) + 80*dnorm(x$p, 10, 10))
-    cex = 0.6*(100/(x$p-1) + 80*dnorm(x$p, 10, 10))
+    cex = 0.95*(100/(x$p-1) + 80*dnorm(x$p, 10, 10))
+#   cex = 0.6*(100/(x$p-1) + 80*dnorm(x$p, 10, 10))
     color = x$board[where]
     g = expand.grid(seq(1+x$voff, x$n+x$voff, by = 1), seq(1+x$hoff, x$m+x$hoff, by = 1))
     g = g[,c(2, 1)]
@@ -48,7 +48,8 @@ go.plot.add = function(where, x){
 
 go.plot.remove = function(where, x){
 
-    cex = 0.65*(100/(x$p-1) + 80*dnorm(x$p, 10, 10))
+    cex = 1.05*(100/(x$p-1) + 80*dnorm(x$p, 10, 10))
+#   cex = 0.65*(100/(x$p-1) + 80*dnorm(x$p, 10, 10))
 
     g = expand.grid(seq(1+x$voff, x$n+x$voff, by = 1), seq(1+x$hoff, x$m+x$hoff, by = 1))
     g = g[,c(2, 1)]
@@ -234,7 +235,7 @@ go.play = function(n, m = n, old_game, machine = 0){
 
     }
 
-go.play(5, machine = 1)
+go.play(13, machine = 1)
 
 # new = xglobal
 #
