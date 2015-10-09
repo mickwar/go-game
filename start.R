@@ -35,7 +35,8 @@ go.plot.init = function(x){
     }
 
 go.plot.add = function(where, x){
-    cex = 0.95*(100/(x$p-1) + 80*dnorm(x$p, 10, 10))
+#   cex = 0.95*(100/(x$p-1) + 80*dnorm(x$p, 10, 10))
+    cex = 0.6*(100/(x$p-1) + 80*dnorm(x$p, 10, 10))
     color = x$board[where]
     g = expand.grid(seq(1+x$voff, x$n+x$voff, by = 1), seq(1+x$hoff, x$m+x$hoff, by = 1))
     g = g[,c(2, 1)]
@@ -47,7 +48,7 @@ go.plot.add = function(where, x){
 
 go.plot.remove = function(where, x){
 
-    cex = 1.05*(100/(x$p-1) + 80*dnorm(x$p, 10, 10))
+    cex = 0.65*(100/(x$p-1) + 80*dnorm(x$p, 10, 10))
 
     g = expand.grid(seq(1+x$voff, x$n+x$voff, by = 1), seq(1+x$hoff, x$m+x$hoff, by = 1))
     g = g[,c(2, 1)]
@@ -62,7 +63,7 @@ go.plot.remove = function(where, x){
     lines(g[where,1] + c(-0.5, 0.5), rep(g[where,2], 2), lwd=0.5)
     }
 
-go.play = function(n, m = n, old_game){
+go.play = function(n, m = n, old_game, machine = 0){
 
     if (missing(old_game)){
         xglobal <<- go.board.init(n, m)
@@ -100,51 +101,6 @@ go.play = function(n, m = n, old_game){
         # All good, no errors
         return (FALSE)
         }
-
-#   Old
-#   error.check = function(where){
-#       # No points clicked
-#       if (length(where) == 0){
-#           cat("    Click where to place piece, then click green circle, then right clight.\n")
-#           return (TRUE)
-#           }
-
-#       # Too many points clicked
-#       if (length(where) > 2){
-#           cat("    Too many points clicked. Starting turn over.\n")
-#           return (TRUE)
-#           }
-
-#       # Only one location clicked that was not a pass
-#       if ((length(where) == 1) && (where[1] != xglobal$n*xglobal$m + 3)){
-#           cat("    Click the green circle to confirm a move. Starting over.\n")
-#           return (TRUE)
-#           }
-
-#       # Red X was clicked
-#       if (any(where == xglobal$n*xglobal$m + 1)){
-#           cat("    Redoing turn.\n")
-#           return (TRUE)
-#           }
-
-#       # Green O not clicked
-#       if (!any(where == xglobal$n*xglobal$m + 2)){
-#           cat("    Green circle must be clicked to confirm a move. Starting over.\n")
-#           return (TRUE)
-#           }
-
-#       # Cannot place in existing location
-#       if (xglobal$board[min(where)] != 0){
-#           cat("    Invalid move: piece already there\n")
-#           return (TRUE)
-#           }
-
-#       # Need to add an option that calls capture() to make sure that the proposed
-#       # move doesn't result in an immediate capture by the opponent
-
-#       # All good, no errors
-#       return (FALSE)
-#       }
 
     capture.recurse = function(where){
         if (abort)
@@ -228,7 +184,16 @@ go.play = function(n, m = n, old_game){
 #       g = rbind(g, c(-0.75, -0.75), c(xglobal$p + 0.75, -0.75))
 
         cat(ifelse(xglobal$turn == 1, "Black", "White"), "'s turn\n", sep="")
-        (where = identify(g, offset = 0, plot = FALSE))
+        if (!(machine == xglobal$turn)){
+            (where = identify(g, offset = 0, plot = FALSE))
+        } else {
+            # Machine's turn
+            machine_prob = rep(1, xglobal$n * xglobal$m) / (xglobal$n * xglobal$m)
+
+            # Now how to make this probability vector better
+
+            where = sample(xglobal$n * xglobal$m, 1, prob = machine_prob)
+            }
 
         if (!error.check(where)){
             where = min(where)
@@ -269,7 +234,7 @@ go.play = function(n, m = n, old_game){
 
     }
 
-go.play(13)
+go.play(5, machine = 1)
 
 # new = xglobal
 #
