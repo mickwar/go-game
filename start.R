@@ -31,12 +31,12 @@ go.plot.init = function(x){
     # Other Markers (for identify())
 #   points(-0.75, -0.75, cex = 5, lwd = 5, pch = 4, col='red')
 #   points(x$p+0.75, -0.75, cex = 5, lwd = 5, pch = 1, col='darkgreen')
-#   text(-0.25, x$p+0.75, "Pass", cex = 3)
+    text(-0.25, x$p+0.75, "Pass", cex = 3)
     }
 
 go.plot.add = function(where, x){
-    cex = 0.95*(100/(x$p-1) + 80*dnorm(x$p, 10, 10))
-#   cex = 0.6*(100/(x$p-1) + 80*dnorm(x$p, 10, 10))
+#   cex = 0.95*(100/(x$p-1) + 80*dnorm(x$p, 10, 10))
+    cex = 0.6*(100/(x$p-1) + 80*dnorm(x$p, 10, 10))
     color = x$board[where]
     g = expand.grid(seq(1+x$voff, x$n+x$voff, by = 1), seq(1+x$hoff, x$m+x$hoff, by = 1))
     g = g[,c(2, 1)]
@@ -48,8 +48,8 @@ go.plot.add = function(where, x){
 
 go.plot.remove = function(where, x){
 
-    cex = 1.05*(100/(x$p-1) + 80*dnorm(x$p, 10, 10))
-#   cex = 0.65*(100/(x$p-1) + 80*dnorm(x$p, 10, 10))
+#   cex = 1.05*(100/(x$p-1) + 80*dnorm(x$p, 10, 10))
+    cex = 0.65*(100/(x$p-1) + 80*dnorm(x$p, 10, 10))
 
     g = expand.grid(seq(1+x$voff, x$n+x$voff, by = 1), seq(1+x$hoff, x$m+x$hoff, by = 1))
     g = g[,c(2, 1)]
@@ -64,7 +64,7 @@ go.plot.remove = function(where, x){
     lines(g[where,1] + c(-0.5, 0.5), rep(g[where,2], 2), lwd=0.5)
     }
 
-go.play = function(n, m = n, old_game, machine = 0){
+go.play = function(n, m = n, old_game, machine_black = FALSE, machine_white = FALSE){
 
     if (missing(old_game)){
         xglobal <<- go.board.init(n, m)
@@ -92,6 +92,9 @@ go.play = function(n, m = n, old_game, machine = 0){
             return (TRUE)
             }
 
+        # Pass clicked, no error
+        if (where[1] == (xglobal$n * xglobal$m + 1))
+            return (FALSE)
 
         # Cannot place in existing location
         if (xglobal$board[min(where)] != 0){
@@ -133,8 +136,6 @@ go.play = function(n, m = n, old_game, machine = 0){
             if ((checked[i] == 0) && (xglobal$board[i] == -xglobal$turn))
                 capture.recurse(i)
             }
-
-
         }
 
     capture = function(where, xglobal){
@@ -176,68 +177,107 @@ go.play = function(n, m = n, old_game, machine = 0){
     cat("Left-click on a position for a stone to be placed.\n")
     cat("Right-click to confirm selection.\n")
 
+    skip = 0
+    prev_turn = xglobal$turn
     while (TRUE){
+        if (skip > 100){
+            xglobal$turn <<- -xglobal$turn
+            prev_turn = xglobal$turn
+            skip = 0
+            }
         g = expand.grid(seq(1+xglobal$voff, xglobal$n+xglobal$voff, by = 1),
                         seq(1+xglobal$hoff, xglobal$m+xglobal$hoff, by = 1))
         g = g[,c(2, 1)]
+        g = rbind(g, c(-0.25, xglobal$p + 0.75))
 
 #       red x and green circle
 #       g = rbind(g, c(-0.75, -0.75), c(xglobal$p + 0.75, -0.75))
 
         cat(ifelse(xglobal$turn == 1, "Black", "White"), "'s turn\n", sep="")
-        if (!(machine == xglobal$turn)){
-            (where = identify(g, offset = 0, plot = FALSE))
-        } else {
+        if ((machine_black == TRUE && xglobal$turn == 1) ||
+            (machine_white == TRUE && xglobal$turn == -1)){
             # Machine's turn
-            machine_prob = rep(1, xglobal$n * xglobal$m) / (xglobal$n * xglobal$m)
 
             # Now how to make this probability vector better
 
-            where = sample(xglobal$n * xglobal$m, 1, prob = machine_prob)
+            h = matrix(NA, xglobal$n * xglobal$m, 4)
+            for (i in 1:(xglobal$n*xglobal$m)){
+                if (xglobal$board[i] == -xglobal$turn){
+                    h[i,] = c(i + xglobal$n, i - 1, i - xglobal$n, i + 1)
+                    if ((i %% xglobal$n) == 0) # on lower edge
+                        h[i,4] = NA
+                    if ((i %% xglobal$n) == 1) # on upper edge
+                        h[i,2] = NA
+                    if (any(i == 1:xglobal$n)) # on left edge
+                        h[i,3] = NA
+                    if (any(i == (xglobal$n*xglobal$m-xglobal$n + 1):(xglobal$n*xglobal$m))) # on right edge
+                        h[i,1] = NA
+                    for (j in 1:NCOL(h))
+                        h[i,j] = ifelse(xglobal$board[h[i,j]] != 0, NA, h[i,j])
+                    }
+                }
+            poss = h[!is.na(h)]
+            machine_prob = rep(1, length(poss))
+            where = ifelse(length(poss) == 0, xglobal$n * xglobal$m + 1, sample(poss, 1, prob = machine_prob))
+        } else {
+            (where = identify(g, offset = 0, plot = FALSE))
             }
 
         if (!error.check(where)){
-            where = min(where)
-            xglobal$board[where] <<- xglobal$turn
-
-            capture.made <<- FALSE
-            capture(where, xglobal)
-
-
-            # Check to make sure a move won't result in immediate capture by enemy
-            # This needs to be run after checking if the move results in a capture
-            # of the enemy, so it's in the wrong place right now
-            checked <<- double(xglobal$n * xglobal$m)
-            abort <<- FALSE
-            possible.error <<- FALSE
-            xglobal$turn <<- -xglobal$turn # Temporarily change turns
-            capture.recurse(where)
-            xglobal$turn <<- -xglobal$turn
-            if (!abort)
-                possible.error <<- TRUE
-
-
-            # A capture was made, proceed as normal
-            if (capture.made){
-                go.plot.add(where, xglobal)
+            if (where == (xglobal$n * xglobal$m + 1)){
+                cat("    Player has skipped\n")
                 xglobal$turn <<- -xglobal$turn
-            } else { # No capture
-                if (!possible.error){ # Not being captured
+            } else {
+                where = min(where)
+                xglobal$board[where] <<- xglobal$turn
+
+                capture.made <<- FALSE
+                capture(where, xglobal)
+
+
+                # Check to make sure a move won't result in immediate capture by enemy
+                # This needs to be run after checking if the move results in a capture
+                # of the enemy, so it's in the wrong place right now
+                checked <<- double(xglobal$n * xglobal$m)
+                abort <<- FALSE
+                possible.error <<- FALSE
+                xglobal$turn <<- -xglobal$turn # Temporarily change turns
+                capture.recurse(where)
+                xglobal$turn <<- -xglobal$turn
+                if (!abort)
+                    possible.error <<- TRUE
+
+                # A capture was made, proceed as normal
+                if (capture.made){
                     go.plot.add(where, xglobal)
                     xglobal$turn <<- -xglobal$turn
-                } else { # No capture AND the piece would have captured by an enemy
-                    cat("    Invalid move: piece would be immediately captured\n")
-                    xglobal$board[where] <<- 0
+                } else { # No capture
+                    if (!possible.error){ # Not being captured
+                        go.plot.add(where, xglobal)
+                        xglobal$turn <<- -xglobal$turn
+                    } else { # No capture AND the piece would have captured by an enemy
+                        cat("    Invalid move: piece would be immediately captured\n")
+                        xglobal$board[where] <<- 0
+                        }
                     }
                 }
             }
+
+        if (prev_turn == xglobal$turn){
+            skip = skip + 1
+        } else {
+            skip = 0
+            prev_turn = xglobal$turn
+            }
+
         }
 
     }
 
-go.play(13, machine = 1)
+go.play(50, machine_black = FALSE, machine_white = FALSE)
 
-# new = xglobal
-#
-# go.play(old_game = new)
+new = xglobal
+go.play(old_game = new, machine_black = TRUE, machine_white = TRUE)
 
+new2 = xglobal
+go.play(old_game = new2, machine_black = TRUE, machine_white = TRUE)
